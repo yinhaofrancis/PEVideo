@@ -151,6 +151,8 @@ public class PEMTGPUView:UIView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         self.real.frame = self.bounds
+        self.layer .insertSublayer(self.real, at: 0)
+        self.real.zPosition = -1
         CATransaction.commit()
     }
     @objc public func replay(){

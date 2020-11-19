@@ -10,9 +10,7 @@ import AVFoundation
 class ViewController: UIViewController {
 
     @IBOutlet weak var url: UITextField!
-    var videoView:PEMTGPUView{
-        return self.view as! PEMTGPUView
-    }
+    @IBOutlet weak var videoView:PEMTGPUView!
  
     override func viewDidLoad() {
         super.viewDidLoad()
