@@ -15,8 +15,6 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         print("\(try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true))")
-        
-        self.videoView.cover(img: #imageLiteral(resourceName: "s").cgImage!)
     }
     
     
@@ -26,14 +24,16 @@ extension ViewController{
         if let text = self.url.text{
             if let a = URL(string: text){
                 self.videoView.load(item: AVAsset(url: a))
-                self.videoView.replay()
+                self.videoView.useFilter = true;
+                
+                
             }
             
         }
         
     }
     @IBAction func change(_ sender: Any) {
-        self.videoView.useFilter = false
+        self.videoView.replay()
     }
 }
 

@@ -27,7 +27,6 @@ typealias stateChange = (PEMTVideoPlayerState)->Void
 
 public protocol PEMTVideoPlayerDisplay:class {
     func    handlePixelBuffer(pixel:CVPixelBuffer)
-    func    handleThumbnail(img:CGImage)
     var     filter:functionFilter? { get set }
     var     backgroundfilter:functionFilter? { get set }
     var     contentsGravity:CALayerContentsGravity {get set}
@@ -57,8 +56,6 @@ public class PEMTVideoPlayer{
     var stateChange:stateChange?
     var timeObs:Any?
     var timeFailObs:Any?
-    var coverImage:CGImage?
-
     public init(asset:AVAsset) {
         self.asset = asset
         let ass = AVPlayerItem(asset: asset)

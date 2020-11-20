@@ -25,7 +25,6 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
     public override init() {
         super.init()
         self.contentsScale = UIScreen.main.scale;
-        self.pixelFormat = .bgra8Unorm_srgb
         if #available(iOS 11.0, *) {
             self.allowsNextDrawableTimeout = false
         } else {
@@ -71,7 +70,6 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
         } else {
             // Fallback on earlier versions
         }
-        self.pixelFormat = .bgra8Unorm_srgb
         self.framebufferOnly = false
 
     }
@@ -80,9 +78,7 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
         self.renderCIImage(img: img)
     }
     func renderCIImage(img:CIImage){
-        self.pixelFormat = .bgra8Unorm_srgb
         let rect = CGRect(x: 0, y: 0, width: self.bounds.size.width * UIScreen.main.scale, height: self.bounds.size.height * UIScreen.main.scale)
-        self.frame = rect;
         if let drawable = self.nextDrawable(){
             let buffer = self.commandQueue?.makeCommandBuffer()
             let texture = drawable.texture
@@ -130,21 +126,6 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
             let dh = pxh - rect.height * min(wratio, hratio)
             return img.transformed(by: CGAffineTransform(translationX: dw / 2, y: dh / 2).scaledBy(x: min(wratio, hratio), y: min(wratio, hratio)))
         }
-        
-    }
-    public func handleThumbnail(img: CGImage) {
-        var pix:CVPixelBuffer?
-       let optional = [kCVPixelBufferCGImageCompatibilityKey:true,
-        kCVPixelBufferCGBitmapContextCompatibilityKey:true]
-        
-        CVPixelBufferCreate(kCFAllocatorSystemDefault, img.width, img.height, kCVPixelFormatType_420YpCbCr8PlanarFullRange, optional as CFDictionary, &pix)
-        
-        if let px = pix{
-            let cimg = CIImage(cgImage: img)
-            context?.render(cimg, to: px, bounds: cimg.extent, colorSpace: CGColorSpaceCreateDeviceRGB())
-            self.renderCIImage(img: CIImage(cvImageBuffer: px))
-        }
-       
     }
 }
 
@@ -152,7 +133,7 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
 public class PEMTGPUView:UIView {
     var real:PEMTVideoPlayerDisplay
     var back:PEMTVideoPlayerDisplay?
-    
+    var imgGen:AVAssetImageGenerator?
     var useFilter:Bool{
         get{
             return self.real.filter != nil
@@ -181,6 +162,9 @@ public class PEMTGPUView:UIView {
         }
     }
     @objc public func load(item:AVAsset){
+        self.coverImage(asset: item) { (img) in
+            self.real.handlePixelBuffer(pixel: img)
+        }
         if let p = PECGVideoView.player{
             p.removeAllDisplay()
             p.stop()
@@ -273,14 +257,24 @@ public class PEMTGPUView:UIView {
     @objc public func mute(bool:Bool){
         PECGVideoView.player?.mute(state: bool)
     }
-    @objc public func cover(img:CGImage){
-        self.real.handleThumbnail(img: img)
-        self.back?.handleThumbnail(img: img)
-    }
     @objc public weak var delegate:PEMTVideoViewDelegate?
     
     @objc public static func createItem(url:URL)->AVPlayerItem{
         let i = AVPlayerItem(asset: AVURLAsset(url: url), automaticallyLoadedAssetKeys: ["isPlayable"])
         return i
+    }
+    
+    @objc public func coverImage(asset:AVAsset,image:@escaping (CVPixelBuffer)->Void){
+        self.imgGen = AVAssetImageGenerator(asset: asset)
+        self.imgGen?.generateCGImagesAsynchronously(forTimes: [NSValue (time: .zero)]) { (t, img, s, r, e) in
+            guard let cimg = img else{return}
+            var pixbuffer:CVPixelBuffer?
+            let op = [kCVPixelBufferCGImageCompatibilityKey : true,
+                      kCVPixelBufferCGBitmapContextCompatibilityKey:true]
+            CVPixelBufferCreate(kCFAllocatorSystemDefault,cimg.width , cimg.height, kCVPixelFormatType_32BGRA, op as CFDictionary, &pixbuffer)
+            guard let pb = pixbuffer else{return}
+            PEVideoLayer.context .render(CIImage(cgImage: cimg), to: pb, bounds: CGRect(x: 0, y: 0, width: cimg.width, height: cimg.height), colorSpace: CGColorSpaceCreateDeviceRGB())
+            image(pb)
+        }
     }
 }
