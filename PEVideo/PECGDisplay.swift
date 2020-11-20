@@ -10,6 +10,15 @@ import CoreImage
 import UIKit
 
 public class PEVideoLayer:CALayer,PEMTVideoPlayerDisplay{
+    public var index: UInt32 = 0
+    
+    public var backgroundfilter: functionFilter?
+    
+    public func loadLayer(parant: CALayer) {
+        parant.addSublayer(self)
+        self.zPosition = CGFloat(index) - 100;
+    }
+    
     public func handleThumbnail(img: CGImage) {
         let ci = CIImage(cgImage: img)
         self.renderCIImage(img: ci)
@@ -85,27 +94,27 @@ public class PEMTVideoSimpleView:UIView {
         }
     }
     @objc public func load(item:AVAsset){
-        if let p = PEMTVideoView.player{
+        if let p = PECGVideoView.player{
             p.removeAllDisplay()
             p.stop()
             p.replaceCurrent(asset: item)
         }else{
-            PEMTVideoView.player = PEMTVideoPlayer(asset: item)
+            PECGVideoView.player = PEMTVideoPlayer(asset: item)
         }
-        PEMTVideoView.player?.addDisplay(display: self.real)
-        self.delegate?.videoPlayer?(player: self, state: PEMTVideoView.player!.state)
+        PECGVideoView.player?.addDisplay(display: self.real)
+        self.delegate?.videoPlayer?(player: self, state: PECGVideoView.player!.state)
         self.layer.addSublayer(real)
-        PEMTVideoView.player?.callback = { [weak self] p in
+        PECGVideoView.player?.callback = { [weak self] p in
             if let ws = self{
                 ws.delegate?.videoPlayer?(player: ws, percent: p)
             }
         }
-        PEMTVideoView.player?.endCallBack = { [weak self] b in
+        PECGVideoView.player?.endCallBack = { [weak self] b in
             if let ws = self{
                 ws.delegate?.videoPlayer?(player: ws, success: b)
             }
         }
-        PEMTVideoView.player?.stateChange = { [weak self] state in
+        PECGVideoView.player?.stateChange = { [weak self] state in
             if let ws = self{
                 ws.delegate?.videoPlayer?(player: ws, state: state)
             }
@@ -130,24 +139,24 @@ public class PEMTVideoSimpleView:UIView {
         CATransaction.commit()
     }
     @objc public func replay(){
-        PEMTVideoView.player?.play()
+        PECGVideoView.player?.play()
     }
     @objc public func pause(){
-        PEMTVideoView.player?.pause()
+        PECGVideoView.player?.pause()
     }
     @objc public var percent:Float{
         get{
-            return PEMTVideoView.player?.percent ?? 0
+            return PECGVideoView.player?.percent ?? 0
         }
         set{
-            PEMTVideoView.player?.seek(percent: newValue)
+            PECGVideoView.player?.seek(percent: newValue)
         }
     }
     @objc public func cancel(){
-        PEMTVideoView.player?.stop()
+        PECGVideoView.player?.stop()
     }
     @objc public func mute(bool:Bool){
-        PEMTVideoView.player?.mute(state: bool)
+        PECGVideoView.player?.mute(state: bool)
     }
     @objc public weak var delegate:PEMTVideoViewDelegate?
     
@@ -160,42 +169,40 @@ public class PEMTVideoSimpleView:UIView {
 
 
 
-public class PEMTVideoView:PEMTVideoSimpleView{
-    public override class var layerClass: AnyClass{
-        return PEVideoLayer.self
-    }
+public class PECGVideoView:PEMTVideoSimpleView{
+  
     var gaussianRadius:CGFloat = 10
    
-    var backLayer:PEVideoLayer{
-        return self.layer as! PEVideoLayer
-    }
+    var backLayer:PEVideoLayer = PEVideoLayer()
     @objc public override func load(item:AVAsset){
-        if let p = PEMTVideoView.player{
+        if let p = PECGVideoView.player{
             p.removeAllDisplay()
             p.replaceCurrent(asset: item)
         }else{
-            PEMTVideoView.player = PEMTVideoPlayer(asset: item)
+            PECGVideoView.player = PEMTVideoPlayer(asset: item)
         }
-        PEMTVideoView.player?.addDisplay(display: self.backLayer)
-        PEMTVideoView.player?.addDisplay(display: self.real)
-        self.delegate?.videoPlayer?(player: self, state: PEMTVideoView.player!.state)
-        let filter = CIFilter(name: "CIGaussianBlur", parameters: ["inputRadius":6])!
+        PECGVideoView.player?.addDisplay(display: self.backLayer)
+        PECGVideoView.player?.addDisplay(display: self.real)
+        self.delegate?.videoPlayer?(player: self, state: PECGVideoView.player!.state)
+        let filter = CIFilter(name: "CIGaussianBlur", parameters: ["inputRadius":self.gaussianRadius])!
         let filter2 = CIFilter(name: "CIExposureAdjust", parameters: ["inputEV":-3])!
         self.backLayer.filter = filter.functionFilter + filter2.functionFilter
         self.backLayer.externOffset = CGSize(width: self.gaussianRadius, height: self.gaussianRadius)
         self.backLayer.contentsGravity = .resizeAspectFill
-        self.layer.addSublayer(real)
-        PEMTVideoView.player?.callback = { [weak self] p in
+        self.layer.addSublayer(self.backLayer)
+        self.backLayer.addSublayer(real)
+        
+        PECGVideoView.player?.callback = { [weak self] p in
             if let ws = self{
                 ws.delegate?.videoPlayer?(player: ws, percent: p)
             }
         }
-        PEMTVideoView.player?.endCallBack = { [weak self] b in
+        PECGVideoView.player?.endCallBack = { [weak self] b in
             if let ws = self{
                 ws.delegate?.videoPlayer?(player: ws, success: b)
             }
         }
-        PEMTVideoView.player?.stateChange = { [weak self] state in
+        PECGVideoView.player?.stateChange = { [weak self] state in
             if let ws = self{
                 ws.delegate?.videoPlayer?(player: ws, state: state)
             }
@@ -215,6 +222,9 @@ public class PEMTVideoView:PEMTVideoSimpleView{
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         self.real.frame = self.bounds
+        self.real.zPosition = -1
+        self.backLayer.frame = self.bounds
+        self.backLayer.zPosition = -2
         CATransaction.commit()
     }
 }

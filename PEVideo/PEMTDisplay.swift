@@ -11,6 +11,14 @@ import AVFoundation
 import CoreImage
 
 public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
+
+    public var index: UInt32 = 0
+    
+    public func loadLayer(parant: CALayer) {
+        parant.addSublayer(self)
+        parant.insertSublayer(self, at: index)
+        self.zPosition = CGFloat(index) - 100;
+    }
     public var filter:functionFilter?
     public var backgroundfilter:functionFilter?
     public var externOffset:CGSize = .zero
@@ -44,14 +52,17 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
     }
     func renderCIImage(img:CIImage){
         let rect = CGRect(x: 0, y: 0, width: self.bounds.size.width * UIScreen.main.scale, height: self.bounds.size.height * UIScreen.main.scale)
-        let buffer = self.commandQueue?.makeCommandBuffer()
         if let drawable = self.nextDrawable(){
+            let buffer = self.commandQueue?.makeCommandBuffer()
             let texture = drawable.texture
             if let backfilter = self.backgroundfilter{
                 if let backimg = backfilter(img){
                     let tram = self.imageTransform(img: backimg,gravity:.resizeAspectFill,originRect: img.extent)
                     self.context?.render(tram, to: texture, commandBuffer: buffer, bounds: rect, colorSpace: CGColorSpaceCreateDeviceRGB())
                 }
+            }else{
+                let img = CIImage(color: CIColor.white)
+                self.context?.render(img, to: texture, commandBuffer: buffer, bounds: rect, colorSpace: CGColorSpaceCreateDeviceRGB())
             }
             if let new = self.filter?(img){
                 let tram = self.imageTransform(img: new,gravity: self.contentsGravity,originRect: img.extent)
@@ -62,6 +73,7 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
                 self.context?.render(tram, to: texture, commandBuffer: buffer, bounds: rect, colorSpace: CGColorSpaceCreateDeviceRGB())
             }
             buffer?.present(drawable)
+            
             buffer?.commit()
         }
     }
@@ -92,8 +104,26 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
 
 
 public class PEMTGPUView:UIView {
-    static var player:PEMTVideoPlayer?
-    var real:PEGPULayer
+    var real:PEMTVideoPlayerDisplay
+    var back:PEMTVideoPlayerDisplay?
+    var useFilter:Bool{
+        get{
+            return self.real.filter != nil
+        }
+        set{
+            if(newValue){
+                let filter = CIFilter(name: "CIGaussianBlur", parameters: ["inputRadius":6])!
+                let filter2 = CIFilter(name: "CIExposureAdjust", parameters: ["inputEV":-3])!
+                self.real.backgroundfilter = filter.functionFilter + filter2.functionFilter
+                self.back?.filter = filter.functionFilter + filter2.functionFilter
+            }else{
+                self.real.backgroundfilter = nil
+                self.back?.filter = nil
+                self.back?.filter = nil
+            }
+            
+        }
+    }
     @objc public var videoGravity:CALayerContentsGravity{
         get{
             return self.real.contentsGravity
@@ -103,27 +133,34 @@ public class PEMTGPUView:UIView {
         }
     }
     @objc public func load(item:AVAsset){
-        if let p = PEMTVideoView.player{
+        if let p = PECGVideoView.player{
             p.removeAllDisplay()
             p.stop()
             p.replaceCurrent(asset: item)
         }else{
-            PEMTVideoView.player = PEMTVideoPlayer(asset: item)
+            PECGVideoView.player = PEMTVideoPlayer(asset: item)
         }
-        PEMTVideoView.player?.addDisplay(display: self.real)
-        self.delegate?.videoPlayer?(player: self, state: PEMTVideoView.player!.state)
-        self.layer.addSublayer(real)
-        PEMTVideoView.player?.callback = { [weak self] p in
+        PECGVideoView.player?.addDisplay(display: self.real)
+        if let b = self.back{
+            PECGVideoView.player?.addDisplay(display:b)
+        }
+        self.delegate?.videoPlayer?(player: self, state: PECGVideoView.player!.state)
+        if let b = self.back{
+            b.loadLayer(parant: self.layer)
+        }
+        real.loadLayer(parant: self.layer)
+        
+        PECGVideoView.player?.callback = { [weak self] p in
             if let ws = self{
                 ws.delegate?.videoPlayer?(player: ws, percent: p)
             }
         }
-        PEMTVideoView.player?.endCallBack = { [weak self] b in
+        PECGVideoView.player?.endCallBack = { [weak self] b in
             if let ws = self{
                 ws.delegate?.videoPlayer?(player: ws, success: b)
             }
         }
-        PEMTVideoView.player?.stateChange = { [weak self] state in
+        PECGVideoView.player?.stateChange = { [weak self] state in
             if let ws = self{
                 ws.delegate?.videoPlayer?(player: ws, state: state)
             }
@@ -132,49 +169,64 @@ public class PEMTGPUView:UIView {
 
     }
     @objc public override init(frame: CGRect) {
-        self.real = PEGPULayer()
-        let filter = CIFilter(name: "CIGaussianBlur", parameters: ["inputRadius":6])!
-        let filter2 = CIFilter(name: "CIExposureAdjust", parameters: ["inputEV":-3])!
-        self.real.backgroundfilter = filter.functionFilter + filter2.functionFilter
+        if MTLCreateSystemDefaultDevice() != nil{
+            self.real = PEGPULayer()
+            
+        }else{
+            self.real = PEVideoLayer()
+            self.back = PEVideoLayer()
+            self.real.index = 0
+            self.back?.index = 1
+            self.real.contentsGravity = .resizeAspect
+            self.back?.contentsGravity = .resizeAspectFill
+        }
         super.init(frame: frame)
     }
-    
     @objc required init?(coder: NSCoder) {
-        self.real = PEGPULayer()
-        let filter = CIFilter(name: "CIGaussianBlur", parameters: ["inputRadius":6])!
-        let filter2 = CIFilter(name: "CIExposureAdjust", parameters: ["inputEV":-3])!
-        self.real.backgroundfilter = filter.functionFilter + filter2.functionFilter
+        if MTLCreateSystemDefaultDevice() != nil{
+            self.real = PEGPULayer()
+            
+        }else{
+            self.real = PEVideoLayer()
+            self.back = PEVideoLayer()
+            self.real.contentsGravity = .resizeAspect
+            self.back?.contentsGravity = .resizeAspectFill
+        }
         super.init(coder: coder)
     }
+    
     public override func layoutSubviews() {
         super.layoutSubviews()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         self.real.frame = self.bounds
-        self.layer .insertSublayer(self.real, at: 0)
-        self.real.zPosition = -1
+        self.back?.frame = self.bounds
+        
+        self.back?.loadLayer(parant: self.layer)
+        self.real.loadLayer(parant: self.layer)
         CATransaction.commit()
     }
     @objc public func replay(){
-        PEMTVideoView.player?.play()
+        PECGVideoView.player?.play()
     }
     @objc public func pause(){
-        PEMTVideoView.player?.pause()
+        PECGVideoView.player?.pause()
     }
     @objc public var percent:Float{
         get{
-            return PEMTVideoView.player?.percent ?? 0
+            return PECGVideoView.player?.percent ?? 0
         }
         set{
-            PEMTVideoView.player?.seek(percent: newValue)
+            PECGVideoView.player?.seek(percent: newValue)
         }
     }
     @objc public func cancel(){
-        PEMTVideoView.player?.stop()
+        PECGVideoView.player?.stop()
     }
     @objc public func mute(bool:Bool){
-        PEMTVideoView.player?.mute(state: bool)
+        PECGVideoView.player?.mute(state: bool)
     }
+    
     @objc public weak var delegate:PEMTVideoViewDelegate?
     
     @objc public static func createItem(url:URL)->AVPlayerItem{

@@ -17,7 +17,8 @@ class ViewController: UIViewController {
         print("\(try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true))")
 //        self.videoView.
     }
-
+    
+    
 }
 extension ViewController{
     @IBAction func play(){
@@ -29,6 +30,9 @@ extension ViewController{
             
         }
         
+    }
+    @IBAction func change(_ sender: Any) {
+        self.videoView.useFilter = false
     }
 }
 

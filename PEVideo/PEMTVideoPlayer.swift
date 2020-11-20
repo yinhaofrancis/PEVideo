@@ -28,6 +28,12 @@ typealias stateChange = (PEMTVideoPlayerState)->Void
 public protocol PEMTVideoPlayerDisplay:class {
     func handlePixelBuffer(pixel:CVPixelBuffer)
     func handleThumbnail(img:CGImage)
+    var filter:functionFilter? { get set }
+    var backgroundfilter:functionFilter? { get set }
+    var contentsGravity:CALayerContentsGravity {get set}
+    var frame:CGRect {get set}
+    func loadLayer(parant:CALayer)
+    var index:UInt32 {get set}
 }
 
 public class PEMTVideoPlayer{

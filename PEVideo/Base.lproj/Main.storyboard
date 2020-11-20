@@ -23,6 +23,9 @@
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fG7-TC-Jhc">
                                         <rect key="frame" x="184" y="433" width="46" height="30"/>
                                         <state key="normal" title="Button"/>
+                                        <connections>
+                                            <action selector="change:" destination="BYZ-38-t0r" eventType="touchUpInside" id="3Lp-Ok-Aib"/>
+                                        </connections>
                                     </button>
                                 </subviews>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
@@ -32,15 +35,15 @@
                                 </constraints>
                             </view>
                             <stackView opaque="NO" contentMode="scaleToFill" spacing="19" translatesAutoresizingMaskIntoConstraints="NO" id="fLQ-ox-5dh">
-                                <rect key="frame" x="20" y="44" width="374" height="34"/>
+                                <rect key="frame" x="0.0" y="44" width="414" height="34"/>
                                 <subviews>
                                     <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="249" horizontalCompressionResistancePriority="749" contentHorizontalAlignment="left" contentVerticalAlignment="center" text="http://vfx.mtime.cn/Video/2019/02/04/mp4/190204084208765161.mp4" borderStyle="roundedRect" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="urp-Uh-Sph">
-                                        <rect key="frame" x="0.0" y="0.0" width="321" height="34"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="361" height="34"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                         <textInputTraits key="textInputTraits"/>
                                     </textField>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="lTp-l5-hOn">
-                                        <rect key="frame" x="340" y="0.0" width="34" height="34"/>
+                                        <rect key="frame" x="380" y="0.0" width="34" height="34"/>
                                         <fontDescription key="fontDescription" type="system" weight="black" pointSize="15"/>
                                         <state key="normal" title="Play"/>
                                         <connections>
@@ -48,18 +51,19 @@
                                         </connections>
                                     </button>
                                 </subviews>
+                                <viewLayoutGuide key="safeArea" id="AG6-3G-26e"/>
                             </stackView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
                             <constraint firstItem="ft0-RP-fZs" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" id="5zJ-Ne-OBx"/>
-                            <constraint firstItem="fLQ-ox-5dh" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="E99-Fi-fAU"/>
                             <constraint firstItem="ft0-RP-fZs" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="FlE-Nz-p8d"/>
                             <constraint firstAttribute="trailing" secondItem="ft0-RP-fZs" secondAttribute="trailing" id="I53-RW-wYA"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="fLQ-ox-5dh" secondAttribute="trailing" constant="20" id="Rdq-AA-jUc"/>
-                            <constraint firstItem="fLQ-ox-5dh" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="20" id="VZU-oL-oo1"/>
+                            <constraint firstItem="fLQ-ox-5dh" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="Ylb-nd-F6G"/>
                             <constraint firstAttribute="bottom" secondItem="ft0-RP-fZs" secondAttribute="bottom" id="ZSv-8f-IBl"/>
+                            <constraint firstAttribute="trailing" secondItem="fLQ-ox-5dh" secondAttribute="trailing" id="bvV-xA-8Tw"/>
+                            <constraint firstItem="fLQ-ox-5dh" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="gNP-Qt-12H"/>
                         </constraints>
                     </view>
                     <connections>
