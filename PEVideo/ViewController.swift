@@ -15,7 +15,8 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         print("\(try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true))")
-//        self.videoView.
+        
+        self.videoView.cover(img: #imageLiteral(resourceName: "s").cgImage!)
     }
     
     

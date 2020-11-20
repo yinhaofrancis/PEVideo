@@ -25,6 +25,12 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
     public override init() {
         super.init()
         self.contentsScale = UIScreen.main.scale;
+        self.pixelFormat = .bgra8Unorm_srgb
+        if #available(iOS 11.0, *) {
+            self.allowsNextDrawableTimeout = false
+        } else {
+            // Fallback on earlier versions
+        }
         self.framebufferOnly = false
     }
     public lazy var commandQueue:MTLCommandQueue? = {
@@ -42,16 +48,41 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
         }
         return nil
     }()
+    public override init(layer: Any) {
+        super.init(layer: layer)
+        if let a:PEGPULayer = layer as? PEGPULayer{
+            self.filter = a.filter
+            self.backgroundfilter = a.backgroundfilter
+            self.index = a.index
+            self.externOffset = a.externOffset
+            self.contentsScale = UIScreen.main.scale;
+            if #available(iOS 11.0, *) {
+                self.allowsNextDrawableTimeout = false
+            } else {
+                // Fallback on earlier versions
+            }
+        }
+    }
     required init?(coder: NSCoder) {
         super.init(coder: coder)
+        self.contentsScale = UIScreen.main.scale;
+        if #available(iOS 11.0, *) {
+            self.allowsNextDrawableTimeout = false
+        } else {
+            // Fallback on earlier versions
+        }
+        self.pixelFormat = .bgra8Unorm_srgb
         self.framebufferOnly = false
+
     }
     public func handlePixelBuffer(pixel: CVPixelBuffer) {
         let img = CIImage(cvPixelBuffer: pixel)
         self.renderCIImage(img: img)
     }
     func renderCIImage(img:CIImage){
+        self.pixelFormat = .bgra8Unorm_srgb
         let rect = CGRect(x: 0, y: 0, width: self.bounds.size.width * UIScreen.main.scale, height: self.bounds.size.height * UIScreen.main.scale)
+        self.frame = rect;
         if let drawable = self.nextDrawable(){
             let buffer = self.commandQueue?.makeCommandBuffer()
             let texture = drawable.texture
@@ -61,8 +92,13 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
                     self.context?.render(tram, to: texture, commandBuffer: buffer, bounds: rect, colorSpace: CGColorSpaceCreateDeviceRGB())
                 }
             }else{
-                let img = CIImage(color: CIColor.white)
-                self.context?.render(img, to: texture, commandBuffer: buffer, bounds: rect, colorSpace: CGColorSpaceCreateDeviceRGB())
+                if #available(iOS 10.0, *) {
+                    let img = CIImage(color: CIColor.white)
+                    self.context?.render(img, to: texture, commandBuffer: buffer, bounds: rect, colorSpace: CGColorSpaceCreateDeviceRGB())
+                } else {
+                
+                }
+                
             }
             if let new = self.filter?(img){
                 let tram = self.imageTransform(img: new,gravity: self.contentsGravity,originRect: img.extent)
@@ -97,8 +133,18 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
         
     }
     public func handleThumbnail(img: CGImage) {
-        let iimg = CIImage(cgImage: img)
-        self.renderCIImage(img: iimg)
+        var pix:CVPixelBuffer?
+       let optional = [kCVPixelBufferCGImageCompatibilityKey:true,
+        kCVPixelBufferCGBitmapContextCompatibilityKey:true]
+        
+        CVPixelBufferCreate(kCFAllocatorSystemDefault, img.width, img.height, kCVPixelFormatType_420YpCbCr8PlanarFullRange, optional as CFDictionary, &pix)
+        
+        if let px = pix{
+            let cimg = CIImage(cgImage: img)
+            context?.render(cimg, to: px, bounds: cimg.extent, colorSpace: CGColorSpaceCreateDeviceRGB())
+            self.renderCIImage(img: CIImage(cvImageBuffer: px))
+        }
+       
     }
 }
 
@@ -106,6 +152,7 @@ public class PEGPULayer:CAMetalLayer,PEMTVideoPlayerDisplay {
 public class PEMTGPUView:UIView {
     var real:PEMTVideoPlayerDisplay
     var back:PEMTVideoPlayerDisplay?
+    
     var useFilter:Bool{
         get{
             return self.real.filter != nil
@@ -124,6 +171,7 @@ public class PEMTGPUView:UIView {
             
         }
     }
+    
     @objc public var videoGravity:CALayerContentsGravity{
         get{
             return self.real.contentsGravity
@@ -194,7 +242,6 @@ public class PEMTGPUView:UIView {
         }
         super.init(coder: coder)
     }
-    
     public override func layoutSubviews() {
         super.layoutSubviews()
         CATransaction.begin()
@@ -226,7 +273,10 @@ public class PEMTGPUView:UIView {
     @objc public func mute(bool:Bool){
         PECGVideoView.player?.mute(state: bool)
     }
-    
+    @objc public func cover(img:CGImage){
+        self.real.handleThumbnail(img: img)
+        self.back?.handleThumbnail(img: img)
+    }
     @objc public weak var delegate:PEMTVideoViewDelegate?
     
     @objc public static func createItem(url:URL)->AVPlayerItem{
